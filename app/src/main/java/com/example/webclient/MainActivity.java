@@ -10,8 +10,12 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 import cn.hutool.core.util.URLUtil;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -42,21 +46,27 @@ public class MainActivity extends AppCompatActivity {
 //                .into(imageView);
     }
 
-    class GetPage extends AsyncTask<Void, Void, String> {
+    class GetPage extends AsyncTask<Void, Void, Map<String, List<String>>> {
 
         @Override
-        protected String doInBackground(Void... voids) {
+        protected Map<String, List<String>> doInBackground(Void... voids) {
             String url = urlView.getText().toString();
             url = URLUtil.normalize(url);
-            return HttpUtil.get(url);
+            HttpResponse response = HttpRequest.get(url).execute();
+            return response.headers();
         }
 
         @Override
-        protected void onPostExecute(String result) {
-            if (result != null)
-                pageView.setText(result);
-            else
-                pageView.setText("Sorry, Page not found");
+        protected void onPostExecute(Map<String, List<String>> result) {
+            StringBuilder headers = new StringBuilder();
+            for (Map.Entry<String, List<String>> entry :
+                    result.entrySet()) {
+                for (String s :
+                        entry.getValue()) {
+                    headers.append(String.format("%s: %s\n", entry.getKey(), s));
+                }
+            }
+            pageView.setText(headers);
         }
     }
 
@@ -70,8 +80,7 @@ public class MainActivity extends AppCompatActivity {
                     .build();
 
             try (Response response = client.newCall(request).execute()) {
-                byte[] pic = response.body().bytes();
-                return pic;
+                return response.body().bytes();
             } catch (IOException e) {
                 e.printStackTrace();
             }
